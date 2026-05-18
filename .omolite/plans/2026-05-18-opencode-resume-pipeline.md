@@ -32,7 +32,7 @@ Document the exact runtime boundary before writing code: what the outer controll
 - Run: `test -f docs/pipeline-architecture.md && test -f README.md`
 - Expected: both files exist and describe the controller/session split, source inputs, output artifacts, and approval gate.
 
-- [ ] Task 1
+- [x] Task 1
 
 ---
 
@@ -53,7 +53,7 @@ Create only the minimum project scaffold needed to run a local controller: packa
 - Run: `bunx tsc --noEmit`
 - Expected: the initial scaffold type-checks without implementation placeholders breaking compilation.
 
-- [ ] Task 2
+- [x] Task 2
 
 ---
 
@@ -166,6 +166,123 @@ Add one narrow verification path and operator documentation. The smoke test shou
 - Expected: the smoke test completes the intended path or fails with a targeted diagnostic that maps to documented recovery steps.
 
 - [ ] Task 8
+
+---
+
+## Round 2 Optimization Tasks
+
+Round 1 establishes the smallest working controller loop. Round 2 hardens that loop for repeatability, lower model cost, and safer edits while preserving the same core architecture.
+
+### Task 9: Make job input local-first and keep URL fetch optional
+
+**Files:**
+- Modify: `src/main.ts`
+- Modify: `src/config.ts`
+- Modify: `src/inputs/fetch-job-posting.ts`
+- Modify: `docs/runbook.md`
+
+**Description:**
+Refine the input path so a local job text or markdown file is the default operator workflow, with URL fetching kept as an explicit adapter instead of the primary runtime path. Both paths should normalize into the same source-context shape so smoke tests and reruns stay deterministic.
+
+**Verification:**
+- Run: `bun run src/main.ts --dry-run --job fixtures/job-posting-sample.md`
+- Expected: the local-file path remains the default documented workflow, and the normalized input payload is identical regardless of how the job text was sourced.
+
+- [ ] Task 9
+
+---
+
+### Task 10: Bound model edits and protect `main.tex` during the loop
+
+**Files:**
+- Create: `src/workflow/apply-resume-update.ts`
+- Modify: `src/workflow/edit-resume.ts`
+- Modify: `src/workflow/run-edit-compile-loop.ts`
+
+**Description:**
+Change the edit contract so OpenCode returns bounded section updates or named-block replacements instead of full-file rewrites. Apply those edits to a candidate working copy under `artifacts/` during the loop, detect no-op outputs, and only promote the candidate back to `main.tex` after compile success and passing review.
+
+**Verification:**
+- Run: `bun run src/main.ts --job fixtures/job-posting-sample.md --max-retries 1`
+- Expected: intermediate edits happen on a candidate file, `main.tex` stays unchanged until a successful end state, and no-op model responses are surfaced as explicit stop conditions.
+
+- [ ] Task 10
+
+---
+
+### Task 11: Harden compile diagnostics and feedback shaping
+
+**Files:**
+- Create: `src/workflow/parse-latex-errors.ts`
+- Modify: `src/workflow/compile-resume.ts`
+- Modify: `src/workflow/run-edit-compile-loop.ts`
+
+**Description:**
+Run LaTeX compilation in a per-run artifact directory with strict flags, startup preflight checks, and saved raw logs. Before sending compile failures back into OpenCode, extract only the relevant file, line, and error snippet so repair turns stay concise and targeted.
+
+**Verification:**
+- Run: `bun run src/main.ts --job fixtures/job-posting-sample.md --max-retries 1`
+- Expected: each run writes isolated compile artifacts, preflight failures are reported before model work starts, and repair feedback contains a trimmed diagnostic summary rather than the full raw log.
+
+- [ ] Task 11
+
+---
+
+### Task 12: Separate retry budgets for compile repair and review polish
+
+**Files:**
+- Modify: `src/config.ts`
+- Modify: `src/workflow/run-edit-compile-loop.ts`
+- Modify: `src/workflow/run-review-loop.ts`
+- Modify: `src/main.ts`
+
+**Description:**
+Split retry control into two bounded budgets: one for compile-fix turns and one for post-compile review polish turns. Stop early on repeated identical output, repeated identical feedback, or other no-progress conditions so the pipeline has predictable runtime and token ceilings.
+
+**Verification:**
+- Run: `bun run src/main.ts --job fixtures/job-posting-sample.md --max-retries 1 --max-review-retries 1`
+- Expected: compile repair and review polish use separate counters, and the run exits cleanly when progress stalls instead of bouncing between identical iterations.
+
+- [ ] Task 12
+
+---
+
+### Task 13: Persist a per-run manifest for approval and debugging
+
+**Files:**
+- Create: `src/workflow/write-run-manifest.ts`
+- Modify: `src/workflow/run-edit-compile-loop.ts`
+- Modify: `src/workflow/run-review-loop.ts`
+- Modify: `src/workflow/approval.ts`
+- Modify: `docs/runbook.md`
+
+**Description:**
+Persist a small run record alongside artifacts, including normalized job text, candidate TeX path, compile log path, reviewer output, and generated PDF path. Use that manifest to improve manual approval summaries and make failed runs easier to inspect and resume.
+
+**Verification:**
+- Run: `bun run src/main.ts --job fixtures/job-posting-sample.md --approval-mode manual`
+- Expected: the run writes a machine-readable manifest in the per-run artifact directory and the approval summary reads from that saved state.
+
+- [ ] Task 13
+
+---
+
+### Task 14: Add explicit editable markers only if bounded edits prove flaky
+
+**Files:**
+- Modify: `main.tex`
+- Modify: `src/workflow/apply-resume-update.ts`
+- Modify: `src/opencode/prompts/editor.md`
+- Modify: `docs/runbook.md`
+
+**Description:**
+If section-bounded replacements are still too brittle, introduce explicit editable markers in `main.tex` so the controller and model share stable edit boundaries. Keep this as an opt-in hardening step rather than a default requirement for the initial implementation.
+
+**Verification:**
+- Run: `bun run src/main.ts --job fixtures/job-posting-sample.md`
+- Expected: when markers are enabled, edits resolve against stable source boundaries and the runbook documents how to maintain them without changing the canonical ownership of `main.tex`.
+
+- [ ] Task 14
 
 ---
 
