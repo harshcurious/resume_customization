@@ -1,0 +1,83 @@
+\documentclass[10pt, letterpaper]{article}
+
+% Packages for formatting
+\usepackage[left=0.6in, right=0.6in, top=0.6in, bottom=0.6in]{geometry}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+
+% Hyperlink setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=blue,
+    pdftitle={Harsh Kumar - Resume},
+}
+
+% Formatting sections
+\titleformat{\section}{\large\bfseries\uppercase}{}{0em}{}[\vspace{-0.5ex}\rule{\textwidth}{0.5pt}]
+\titlespacing{\section}{0pt}{1.5ex}{1ex}
+
+\begin{document}
+
+% Disable page numbers
+\pagestyle{empty}
+
+% --- HEADER ---
+\begin{center}
+    {\Huge \textbf{Harsh Kumar}} \\[1.5ex]
+    \href{mailto:eharshkmr@gmail.com}{eharshkmr@gmail.com} \textbar{} +91 886039 4423 \textbar{} \href{https://linkedin.com/in/harsh-kumar-a7b98198}{LinkedIn} \\[0.5ex]
+    \href{https://harshcurious.com}{harshcurious.com} \textbar{} \href{https://github.com/harshcurious}{github.com/harshcurious}
+\end{center}
+
+% --- SUMMARY ---
+\section*{Professional Summary}
+\textbf{Senior Data Scientist} with 4+ years of expertise in the fintech domain, specializing in end-to-end credit risk modeling (\textbf{PD, LGD, EAD}). Proven track record of building and managing critical risk models that process \textbf{\$100M+ in annual volume} utilizing alternative and transactional data. Highly proficient in \textbf{Python, SQL, and PySpark}, with deep expertise in applying advanced machine learning (XGBoost, LightGBM, Deep Learning) to solve complex business problems. Adept at full-lifecycle \textbf{MLOps}, from conceptualizing risk solutions to building automated pipelines, tracking model drift, and partnering with risk, underwriting, and engineering teams to drive business performance.
+
+% --- SKILLS ---
+\section*{Skills}
+\begin{itemize}[leftmargin=0.15in, label={}]
+    \item \textbf{Credit Risk \& Analytics:} PD, LGD, and EAD Modelling, Alternative Data Evaluation, Feature Engineering, Model Validation, A/B Testing, PSI/CSI Drift Monitoring, Model Governance.
+    \item \textbf{Machine Learning:} XGBoost, LightGBM, Random Forest, Logistic Regression, Deep Learning, PyTorch, Scikit-learn, Spark MLlib.
+    \item \textbf{Data \& MLOps:} Python, SQL, PySpark, Databricks, Snowflake, Polars, DynamoDB, Airflow, GitLab CI/CD, BentoML, Docker.
+\end{itemize}
+
+% --- WORK EXPERIENCE ---
+\section*{Work Experience}
+
+\noindent
+\textbf{DECISION SCIENTIST \textbar{} Onepay (Walmart Venture)} \hfill \textbf{Bengaluru, India \textbar{} 2024 -- 2026}
+\begin{itemize}[leftmargin=0.25in, itemsep=1pt]
+    \item \textbf{Credit Risk Modelling (PD):} Designed calibrated \textbf{XGBoost} probability of default (PD) scorecards for overdraft and cash advance products, handling 2M+ transactions and achieving a \textbf{20\% fraud reduction} while maintaining stable approval rates.
+    \item \textbf{Alternative Data Evaluation:} Leveraged non-traditional and transactional data to engineer a high-scale feature library of \textbf{2,000+ signals} using \textbf{PySpark}, enhancing predictive power and risk segmentation.
+    \item \textbf{MLOps \& Deployment:} Architected end-to-end pipelines utilizing \textbf{Databricks Lakehouse}, \textbf{GitLab CI/CD}, and \textbf{Airflow} to automate model training, deployment, and continuous performance tracking (PSI/CSI drift detection).
+    \item \textbf{Ownership \& Collaboration:} Partnered seamlessly with risk, underwriting, and engineering stakeholders to translate technical limitations into actionable risk decisions, delivering hybrid low-latency pipelines (\textbf{DynamoDB}) for real-time transaction risk.
+\end{itemize}
+
+\vspace{1ex}
+
+\noindent
+\textbf{DATA SCIENTIST \textbar{} ZESTMONEY} \hfill \textbf{Bengaluru, India \textbar{} 2022 -- 2023}
+\begin{itemize}[leftmargin=0.25in, itemsep=1pt]
+    \item \textbf{Collections (LGD) \& Fraud Modeling:} Built and validated classification models for fraud likelihood and collection prioritization workflows, directly optimizing loss given default (LGD) and reducing delinquency rates.
+    \item \textbf{Model Development \& Validation:} Applied both traditional and advanced ML algorithms (XGBoost, LightGBM) with rigorous evaluation methodologies to analyze 2,000+ features from 8 alternative data sources, achieving up to \textbf{30\% conversion uplift}.
+    \item \textbf{Model Monitoring \& Governance:} Designed and implemented the organization's centralized monitoring framework, establishing feedback loops and dashboards to track ongoing performance across all deployed models.
+    \item \textbf{Engineering Excellence:} Deployed robust real-time scoring APIs via BentoML with \textbf{200-400ms latency} and improved ETL data research latency by \textbf{40\%} by migrating pipelines from Pandas to \textbf{Polars}.
+\end{itemize}
+
+% --- EDUCATION ---
+\section*{Education}
+
+\noindent
+\textbf{M.S. in Mathematics and Scientific Computing} \hfill \textbf{GPA: 9.1} \\
+Indian Institute of Technology Kanpur (IIT Kanpur) \hfill \\
+
+\vspace{1ex}
+
+\noindent
+\textbf{B.S. in Mathematics and Scientific Computing} \hfill \textbf{GPA: 8.4}\\
+Indian Institute of Technology Kanpur (IIT Kanpur) \hfill
+
+\end{document}
