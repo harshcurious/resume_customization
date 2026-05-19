@@ -7,10 +7,13 @@ Build a small local controller that customizes `main.tex` for a target job posti
 ## Authoritative inputs
 
 - `main.tex`: canonical editable resume source
-- `context/gemini-share-bed999fa3153.md`: supplemental source material
+- `context/gemini-share-bed999fa3153.summary.md`: primary supplemental source material for early runs
+- `context/gemini-share-bed999fa3153.md`: full transcript available for fallback reference
 - job posting text: target role description provided for a run
 
 `main.tex` remains the final source of truth. Supplemental context can inform edits, but it does not replace the resume source file.
+
+Use a summary-first context policy for the Gemini material: start with the compact summary, include the full transcript path in prompt context, and only pull in more transcript content if the first few runs show that the model needs it.
 
 ## Runtime boundary
 

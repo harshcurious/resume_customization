@@ -325,10 +325,5 @@ TSWLatexianTemp*
 # End of https://www.toptal.com/developers/gitignore/api/tex
 
 # Custom rules (everything added below won't be overriden by 'Generate .gitignore File' if you use 'Update' option)
-.opencode/index/codebase.db
-.opencode/index/codebase.db-shm
-.opencode/index/codebase.db-wal
-.opencode/index/file-hashes.json
-.opencode/index/inverted-index.json
-.opencode/index/vectors
-.opencode/index/vectors.meta.json
+.opencode/index/
+.vscode/

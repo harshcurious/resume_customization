@@ -3,7 +3,7 @@
 > **For agentic workers:** Use Architect agent to execute this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a minimal TypeScript pipeline that customizes `main.tex` for a target job posting using the OpenCode SDK, compile-and-retry logic, PDF review, and a manual git approval gate.
-**Architecture:** Use one controller-owned workflow with a single OpenCode session per run. The controller owns deterministic steps such as job-post fetch, compile exit-code handling, retry limits, artifact paths, and final approval, while OpenCode handles TeX edits and PDF review turns. `main.tex` remains the editable source resume, and `context/gemini-share-bed999fa3153.md` is supplemental source material.
+**Architecture:** Use one controller-owned workflow with a single OpenCode session per run. The controller owns deterministic steps such as job-post fetch, compile exit-code handling, retry limits, artifact paths, and final approval, while OpenCode handles TeX edits and PDF review turns. `main.tex` remains the editable source resume, `context/gemini-share-bed999fa3153.summary.md` is the primary supplemental context, and `context/gemini-share-bed999fa3153.md` remains available for fallback reference.
 **Tech Stack:** TypeScript, Node.js, OpenCode SDK, LaTeX (`latexmk`), local filesystem, git.
 
 ---
@@ -12,10 +12,17 @@
 
 - Existing files:
   - `main.tex`
+  - `context/gemini-share-bed999fa3153.summary.md`
   - `context/gemini-share-bed999fa3153.md`
   - `README.md`
-- No package manifest, no runtime code, no test harness, and no pipeline scaffolding yet.
+  - `docs/pipeline-architecture.md`
+  - `package.json`
+  - `src/main.ts`
+  - `src/config.ts`
+  - `tests/config.test.ts`
+- A minimal TypeScript scaffold and task-3 input loading are in place, but the edit, compile, review, and approval workflow stages are still pending.
 - The Gemini share is accessible through a mirror path, so the implementation should treat that source as pre-fetched local context instead of depending on live Gemini scraping at runtime.
+- Early runs should use a summary-first Gemini context file with the full transcript path included for fallback only. Revisit whether the full transcript is needed after observing the first few runs.
 
 ---
 
@@ -72,7 +79,7 @@ Implement one input layer for the target job posting and one for local resume co
 - Run: `bun run src/main.ts --dry-run --job fixtures/job-posting-sample.md`
 - Expected: the program prints or logs a normalized input summary showing `main.tex` and Gemini context were loaded successfully.
 
-- [ ] Task 3
+- [x] Task 3
 
 ---
 
@@ -92,7 +99,7 @@ Add the minimal OpenCode integration layer: client creation, session lifecycle, 
 - Run: `bun run src/main.ts --dry-run --job fixtures/job-posting-sample.md`
 - Expected: the program reaches the OpenCode preparation stage and emits the planned session/prompt configuration without yet requiring a full live run.
 
-- [ ] Task 4
+- [x] Task 4
 
 ---
 

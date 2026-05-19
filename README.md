@@ -5,7 +5,8 @@ Local pipeline for customizing `main.tex` to a target job posting with OpenCode.
 ## Source of truth
 
 - `main.tex`: canonical resume source
-- `context/gemini-share-bed999fa3153.md`: supplemental resume context
+- `context/gemini-share-bed999fa3153.summary.md`: compact supplemental resume context
+- `context/gemini-share-bed999fa3153.md`: full transcript for fallback reference only
 
 ## Planned workflow
 
@@ -18,10 +19,12 @@ Local pipeline for customizing `main.tex` to a target job posting with OpenCode.
 
 The controller owns deterministic steps such as input loading, compile results, retry limits, artifact paths, and the approval gate. OpenCode owns TeX edit turns and PDF review turns.
 
+The current context policy is summary-first: use the compact Gemini summary in early runs, keep the full transcript path available for escalation, and only promote more transcript content if the first few runs show it is necessary.
+
 See `docs/pipeline-architecture.md` for the runtime boundary and repo layout.
 
 ## Status
 
-Planning is in progress. Runtime code has not been scaffolded yet.
+The minimal TypeScript scaffold and task-3 input loading are in place. The edit, compile, review, and approval workflow stages are still pending.
 
 ![workflow](data/image.png)
