@@ -16,6 +16,26 @@ export interface StructuredOutputSchema {
   schema: JsonSchemaObject;
 }
 
+export interface ResumeEditResponse {
+  summary: string;
+  updatedResumeTex: string;
+  changes: string[];
+  needsFullTranscript: boolean;
+  notes: string[];
+}
+
+export interface ResumeReviewIssue {
+  severity: "low" | "medium" | "high";
+  detail: string;
+}
+
+export interface ResumeReviewResponse {
+  passed: boolean;
+  summary: string;
+  issues: ResumeReviewIssue[];
+  needsAnotherEditRound: boolean;
+}
+
 export const EDITOR_RESPONSE_SCHEMA: StructuredOutputSchema = {
   name: "resume-edit-response",
   description: "Structured resume edit proposal for a job-targeted TeX update.",

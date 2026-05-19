@@ -53,7 +53,8 @@ node_modules/
 
 # Build output
 dist/
-artifacts/
+artifacts/*
+!artifacts/.gitkeep
 
 ## Build tool directories for auxiliary files
 # latexrun

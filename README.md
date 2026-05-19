@@ -25,6 +25,8 @@ See `docs/pipeline-architecture.md` for the runtime boundary and repo layout.
 
 ## Status
 
-The minimal TypeScript scaffold and task-3 input loading are in place. The edit, compile, review, and approval workflow stages are still pending.
+The minimal TypeScript scaffold, task-3 input loading, task-4 OpenCode preparation, and task-5 edit/compile loop are in place. The controller now starts or reuses an OpenCode server for live runs, requests a resume edit, compiles with `latexmk`, and writes artifacts under `artifacts/`.
+
+The next pending stage is task 6: PDF review and feedback re-entry, followed by the manual approval and git commit gate.
 
 ![workflow](data/image.png)

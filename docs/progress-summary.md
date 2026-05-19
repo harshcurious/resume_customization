@@ -18,18 +18,38 @@
    - structured output schemas
    - no-reply feedback injection helper
 5. Updated dry-run output to show an `opencode-prepared` summary instead of raw source contents.
+6. Added task-5 edit and compile workflow:
+   - OpenCode edit turn execution against a live session
+   - `latexmk` compile step with saved logs and PDF artifact detection
+   - retry loop with bounded compile feedback on failure
+   - original resume restoration on failed runs
+7. Added automatic OpenCode server lifecycle handling:
+   - reuse an existing reachable server when available
+   - start a local server when the configured base URL is unavailable
+   - close the managed server after the live run finishes
 
 ## Verification completed
 
 - `bun test`
 - `bun run check`
 - `bun run src/main.ts --dry-run --job fixtures/job-posting-sample.md`
+- `bun run src/main.ts --job fixtures/job-posting-sample.md --max-retries 1`
 
 ## Current status
 
 - Task 3: complete
 - Task 4: complete
-- Next work: task 5, the edit and compile loop
+- Task 5: complete
+- Next work: task 6, PDF review and feedback re-entry
+
+## Latest live-run result
+
+- The pipeline now completes a live edit + compile run end to end.
+- Latest verified output included:
+  - stage: `edit-compile-complete`
+  - compiled PDF path under `artifacts/run-.../main.pdf`
+  - compile log path under `artifacts/run-.../compile.log`
+  - OpenCode session ID in the structured run result
 
 ## Note on context size
 

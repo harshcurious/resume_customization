@@ -4,24 +4,61 @@ import { formatStartupSummary, loadConfig } from "./config.js";
 import { loadJobPosting } from "./inputs/fetch-job-posting.js";
 import { loadResumeContext } from "./inputs/load-resume-context.js";
 import { prepareOpencodeSession, type OpencodeSessionPreparation } from "./opencode/session.js";
+import { ensureOpencodeServer } from "./opencode/server.js";
 import type { SourceDocument } from "./types/source-context.js";
+import { runEditCompileLoop } from "./workflow/run-edit-compile-loop.js";
 
-export async function run(argv: string[]): Promise<string> {
+interface RunDependencies {
+  loadJobPosting?: typeof loadJobPosting;
+  loadResumeContext?: typeof loadResumeContext;
+  prepareOpencodeSession?: typeof prepareOpencodeSession;
+  ensureOpencodeServer?: typeof ensureOpencodeServer;
+  runEditCompileLoop?: typeof runEditCompileLoop;
+}
+
+export async function run(argv: string[], dependencies: RunDependencies = {}): Promise<string> {
   const config = loadConfig(argv);
+  const loadJobPostingImpl = dependencies.loadJobPosting ?? loadJobPosting;
+  const loadResumeContextImpl = dependencies.loadResumeContext ?? loadResumeContext;
+  const prepareOpencodeSessionImpl = dependencies.prepareOpencodeSession ?? prepareOpencodeSession;
+  const ensureOpencodeServerImpl = dependencies.ensureOpencodeServer ?? ensureOpencodeServer;
+  const runEditCompileLoopImpl = dependencies.runEditCompileLoop ?? runEditCompileLoop;
 
   if (!config.jobInput) {
     return formatStartupSummary(config);
   }
 
   const [jobPosting, resumeContext] = await Promise.all([
-    loadJobPosting(config.jobInput),
-    loadResumeContext(),
+    loadJobPostingImpl(config.jobInput),
+    loadResumeContextImpl(),
   ]);
 
-  const opencode = await prepareOpencodeSession({
+  const opencode = await prepareOpencodeSessionImpl({
     jobPosting,
     resumeContext,
   });
+
+  if (!config.dryRun) {
+    const managedServer = await ensureOpencodeServerImpl({
+      client: opencode.client,
+    });
+
+    try {
+      const result = await runEditCompileLoopImpl({
+        config,
+        jobPosting,
+        resumeContext,
+        opencode: {
+          ...opencode,
+          client: managedServer.client,
+        },
+      });
+
+      return typeof result === "string" ? result : JSON.stringify(result, null, 2);
+    } finally {
+      managedServer.close();
+    }
+  }
 
   return JSON.stringify(
     {
