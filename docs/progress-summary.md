@@ -27,6 +27,10 @@
    - reuse an existing reachable server when available
    - start a local server when the configured base URL is unavailable
    - close the managed server after the live run finishes
+8. Added task-6 PDF review and feedback re-entry:
+   - reviewer turn execution against the compiled PDF artifact
+   - shared retry budget across compile failures and review-requested revisions
+   - structured review results in the controller output
 
 ## Verification completed
 
@@ -40,13 +44,14 @@
 - Task 3: complete
 - Task 4: complete
 - Task 5: complete
-- Next work: task 6, PDF review and feedback re-entry
+- Task 6: complete
+- Next work: manual approval and git commit gate
 
 ## Latest live-run result
 
-- The pipeline now completes a live edit + compile run end to end.
-- Latest verified output included:
-  - stage: `edit-compile-complete`
+- The pipeline now has test-verified PDF review wiring after successful compile.
+- Controller outputs now include a terminal review stage such as:
+  - stage: `review-complete`
   - compiled PDF path under `artifacts/run-.../main.pdf`
   - compile log path under `artifacts/run-.../compile.log`
   - OpenCode session ID in the structured run result

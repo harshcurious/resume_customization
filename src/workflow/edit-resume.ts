@@ -13,6 +13,7 @@ export interface EditResumeInput {
   resumeContext: ResumeContext;
   opencode: OpencodeSessionPreparation;
   sessionID?: string | undefined;
+  controllerFeedback?: string | undefined;
   compileFeedback?: string | undefined;
   client?: Pick<OpencodeClient, "session">;
 }
@@ -27,15 +28,17 @@ export async function editResume(input: EditResumeInput): Promise<EditResumeResu
   const client = input.client ?? createOpencodeClient(input.opencode.client);
   const sessionID = input.sessionID ?? (await createSession(client, input.opencode.client.directory));
 
-  if (input.compileFeedback) {
+  const controllerFeedback = input.controllerFeedback ?? input.compileFeedback;
+
+  if (controllerFeedback) {
     const feedbackResult = await client.session.promptAsync({
       path: { id: sessionID },
       query: { directory: input.opencode.client.directory },
-      body: createNoReplyFeedbackInjection(formatCompileFeedback(input.compileFeedback)),
+      body: createNoReplyFeedbackInjection(formatControllerFeedback(controllerFeedback)),
     });
 
     if (feedbackResult.error) {
-      throw new Error(formatSdkError("Failed to send compile feedback", feedbackResult.error));
+      throw new Error(formatSdkError("Failed to send controller feedback", feedbackResult.error));
     }
   }
 
@@ -95,9 +98,9 @@ function buildEditContext(input: EditResumeInput): string {
   ].join("\n");
 }
 
-function formatCompileFeedback(feedback: string): string {
+function formatControllerFeedback(feedback: string): string {
   return [
-    "Controller compile feedback:",
+    "Controller feedback:",
     feedback,
     "Revise the full resume TeX and return JSON matching the editor schema.",
   ].join("\n\n");

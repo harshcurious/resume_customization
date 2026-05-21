@@ -2,10 +2,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import type { RunConfig } from "../config.js";
+import type { ResumeReviewIssue } from "../opencode/schemas.js";
 import type { OpencodeSessionPreparation } from "../opencode/session.js";
 import type { ResumeContext, SourceDocument } from "../types/source-context.js";
 import { compileResume, type CompileResumeResult } from "./compile-resume.js";
 import { editResume, type EditResumeResult } from "./edit-resume.js";
+import { reviewResume, type ReviewResumeResult } from "./review-resume.js";
 
 export interface EditCompileLoopInput {
   config: RunConfig;
@@ -19,6 +21,7 @@ export interface EditCompileLoopInput {
       resumeContext: ResumeContext;
       opencode: OpencodeSessionPreparation;
       sessionID?: string | undefined;
+      controllerFeedback?: string | undefined;
       compileFeedback?: string | undefined;
     }) => Promise<EditResumeResult>;
     compileResume?: (input: {
@@ -26,12 +29,19 @@ export interface EditCompileLoopInput {
       artifactDirectory: string;
       workingDirectory: string;
     }) => Promise<CompileResumeResult>;
+    reviewResume?: (input: {
+      pdfPath: string;
+      jobPosting: SourceDocument;
+      resumeContext: ResumeContext;
+      opencode: OpencodeSessionPreparation;
+      sessionID: string;
+    }) => Promise<ReviewResumeResult>;
     createRunId?: () => string;
   };
 }
 
 export interface EditCompileLoopResult {
-  stage: "edit-compile-complete" | "edit-compile-failed";
+  stage: "review-complete" | "review-failed" | "edit-compile-failed";
   artifactDirectory: string;
   sessionID?: string | undefined;
   compile: {
@@ -44,6 +54,13 @@ export interface EditCompileLoopResult {
   edit: {
     summaries: string[];
   };
+  review?: {
+    attemptCount: number;
+    passed: boolean;
+    summary: string;
+    needsAnotherEditRound: boolean;
+    issues: ResumeReviewIssue[];
+  };
 }
 
 export async function runEditCompileLoop(input: EditCompileLoopInput): Promise<EditCompileLoopResult> {
@@ -54,14 +71,17 @@ export async function runEditCompileLoop(input: EditCompileLoopInput): Promise<E
   const resumePath = input.resumeContext.resume.source.location;
   const compile = input.dependencies?.compileResume ?? compileResume;
   const edit = input.dependencies?.editResume ?? editResume;
+  const review = input.dependencies?.reviewResume ?? reviewResume;
   const originalResume = await readFile(resumePath, "utf8");
 
   await writeFile(join(artifactDirectory, "main.original.tex"), originalResume, "utf8");
 
   const summaries: string[] = [];
   let sessionID: string | undefined;
-  let compileFeedback: string | undefined;
+  let controllerFeedback: string | undefined;
   let lastCompileResult: CompileResumeResult | undefined;
+  let lastReviewResult: ReviewResumeResult | undefined;
+  let reviewAttemptCount = 0;
 
   try {
     for (let attempt = 1; attempt <= input.config.maxRetries + 1; attempt += 1) {
@@ -70,7 +90,8 @@ export async function runEditCompileLoop(input: EditCompileLoopInput): Promise<E
         resumeContext: input.resumeContext,
         opencode: input.opencode,
         sessionID,
-        compileFeedback,
+        controllerFeedback,
+        compileFeedback: controllerFeedback,
       });
 
       sessionID = editResult.sessionID;
@@ -91,9 +112,32 @@ export async function runEditCompileLoop(input: EditCompileLoopInput): Promise<E
 
       lastCompileResult = compileResult;
 
-      if (compileResult.ok) {
+      if (!compileResult.ok) {
+        controllerFeedback = compileResult.summary;
+        continue;
+      }
+
+      reviewAttemptCount += 1;
+
+      const currentSessionID = sessionID;
+
+      if (!currentSessionID) {
+        throw new Error("Review step requires an OpenCode session id");
+      }
+
+      const reviewResult = await review({
+        pdfPath: compileResult.pdfPath,
+        jobPosting: input.jobPosting,
+        resumeContext: input.resumeContext,
+        opencode: input.opencode,
+        sessionID: currentSessionID,
+      });
+
+      lastReviewResult = reviewResult;
+
+      if (!reviewResult.response.needsAnotherEditRound) {
         return {
-          stage: "edit-compile-complete",
+          stage: "review-complete",
           artifactDirectory,
           sessionID,
           compile: {
@@ -105,10 +149,41 @@ export async function runEditCompileLoop(input: EditCompileLoopInput): Promise<E
           edit: {
             summaries,
           },
+          review: {
+            attemptCount: reviewAttemptCount,
+            passed: reviewResult.response.passed,
+            summary: reviewResult.response.summary,
+            needsAnotherEditRound: reviewResult.response.needsAnotherEditRound,
+            issues: reviewResult.response.issues,
+          },
         };
       }
 
-      compileFeedback = compileResult.summary;
+      controllerFeedback = formatReviewFeedback(reviewResult.response);
+    }
+
+    if (lastCompileResult?.ok && lastReviewResult) {
+      return {
+        stage: "review-failed",
+        artifactDirectory,
+        sessionID,
+        compile: {
+          attemptCount: input.config.maxRetries + 1,
+          maxRetries: input.config.maxRetries,
+          logPath: lastCompileResult.logPath,
+          pdfPath: lastCompileResult.pdfPath,
+        },
+        edit: {
+          summaries,
+        },
+        review: {
+          attemptCount: reviewAttemptCount,
+          passed: lastReviewResult.response.passed,
+          summary: lastReviewResult.response.summary,
+          needsAnotherEditRound: lastReviewResult.response.needsAnotherEditRound,
+          issues: lastReviewResult.response.issues,
+        },
+      };
     }
 
     await writeFile(resumePath, originalResume, "utf8");
@@ -169,4 +244,18 @@ async function createArtifactDirectory(
 
 function createTimestampRunId(): string {
   return `run-${new Date().toISOString().replaceAll(":", "-")}`;
+}
+
+function formatReviewFeedback(result: ReviewResumeResult["response"]): string {
+  const issues = result.issues.length === 0
+    ? "No explicit issues were listed."
+    : result.issues.map((issue, index) => `${index + 1}. [${issue.severity}] ${issue.detail}`).join("\n");
+
+  return [
+    "Controller PDF review feedback:",
+    result.summary,
+    "Issues:",
+    issues,
+    "Revise the resume TeX to address the review feedback.",
+  ].join("\n\n");
 }
