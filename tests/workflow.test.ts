@@ -107,6 +107,48 @@ describe("runEditCompileLoop", () => {
     assert.match(await readFile(result.logPath, "utf8"), /ENOENT/);
   });
 
+  it("renames the compiled PDF to the requested output filename", async () => {
+    const compileModule = (await import("../src/workflow/compile-resume.js").catch(() => ({}))) as Partial<
+      typeof import("../src/workflow/compile-resume.js")
+    >;
+
+    assert.equal(typeof compileModule.compileResume, "function");
+
+    if (typeof compileModule.compileResume !== "function") {
+      return;
+    }
+
+    const workspace = await mkdtemp(join(tmpdir(), "resume-customization-pdf-name-"));
+    after(async () => {
+      await rm(workspace, { recursive: true, force: true });
+    });
+
+    const artifactDirectory = join(workspace, "artifacts");
+    const resumePath = join(workspace, "main.tex");
+    await writeFile(resumePath, "\\documentclass{article}", "utf8");
+
+    const result = await compileModule.compileResume({
+      resumePath,
+      artifactDirectory,
+      workingDirectory: workspace,
+      outputFileName: "Harsh_Kumar_Resume_Digitap.pdf",
+      commandRunner: async () => {
+        await mkdir(artifactDirectory, { recursive: true });
+        await writeFile(join(artifactDirectory, "main.pdf"), "pdf-bytes", "utf8");
+
+        return {
+          exitCode: 0,
+          stdout: "",
+          stderr: "",
+          error: undefined,
+        };
+      },
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.pdfPath, join(artifactDirectory, "Harsh_Kumar_Resume_Digitap.pdf"));
+  });
+
   it("retries once with compile feedback and preserves the last successful edit", async () => {
     const workflowModule = (await import("../src/workflow/run-edit-compile-loop.js").catch(() => ({}))) as Partial<
       typeof import("../src/workflow/run-edit-compile-loop.js")
@@ -232,6 +274,120 @@ describe("runEditCompileLoop", () => {
     assert.equal(feedbackMessages[0], "");
     assert.match(feedbackMessages[1] ?? "", /Undefined control sequence/);
     assert.equal(await readFile(resumePath, "utf8"), "fixed resume");
+  });
+
+  it("passes a company-named PDF path into the review step", async () => {
+    const workflowModule = (await import("../src/workflow/run-edit-compile-loop.js").catch(() => ({}))) as Partial<
+      typeof import("../src/workflow/run-edit-compile-loop.js")
+    >;
+
+    assert.equal(typeof workflowModule.runEditCompileLoop, "function");
+
+    if (typeof workflowModule.runEditCompileLoop !== "function") {
+      return;
+    }
+
+    const workspace = await mkdtemp(join(tmpdir(), "resume-customization-company-pdf-"));
+    after(async () => {
+      await rm(workspace, { recursive: true, force: true });
+    });
+
+    const resumePath = join(workspace, "main.tex");
+    await mkdir(join(workspace, "artifacts"), { recursive: true });
+    await writeFile(resumePath, "original resume", "utf8");
+
+    const compileInputs: Array<{ outputFileName?: string | undefined }> = [];
+    const reviewInputs: string[] = [];
+
+    const result = await workflowModule.runEditCompileLoop({
+      config: {
+        dryRun: false,
+        jobInput: "fixtures/job-posting-sample.md",
+        approvalMode: "manual",
+        maxRetries: 0,
+      },
+      jobPosting: {
+        source: { kind: "url", location: "https://digitap.freshteam.com/jobs/example" },
+        content: "About Digitap.ai\n\nData Scientist ML Engineer",
+      },
+      resumeContext: {
+        resume: {
+          source: { kind: "file", location: resumePath },
+          content: "original resume",
+        },
+        supplemental: {
+          source: { kind: "file", location: "/tmp/summary.md" },
+          content: "summary context",
+        },
+      },
+      opencode: {
+        client: { baseURL: "http://localhost:54321", directory: workspace },
+        session: { lifecycle: "single-session-per-run", createMethod: "session.create" },
+        turns: {
+          editor: {
+            sdkMethod: "session.prompt",
+            prompt: { path: "/tmp/editor.md", content: "editor prompt" },
+            responseSchema: { name: "resume-edit-response", description: "", schema: {} },
+            tools: { file_edit: false, terminal: false },
+            message: { tools: { file_edit: false, terminal: false }, parts: [{ type: "text", text: "editor prompt" }] },
+          },
+          reviewer: {
+            sdkMethod: "session.prompt",
+            prompt: { path: "/tmp/reviewer.md", content: "reviewer prompt" },
+            responseSchema: { name: "resume-review-response", description: "", schema: {} },
+            tools: { file_edit: false, terminal: false },
+            message: { tools: { file_edit: false, terminal: false }, parts: [{ type: "text", text: "reviewer prompt" }] },
+          },
+        },
+        feedbackInjection: {
+          sdkMethod: "session.promptAsync",
+          message: { noReply: true, parts: [{ type: "text", text: "feedback" }] },
+        },
+      },
+      artifactsRoot: join(workspace, "artifacts"),
+      dependencies: {
+        editResume: async () => ({
+          sessionID: "session-1",
+          rawResponseText: "{}",
+          response: {
+            summary: "initial resume",
+            updatedResumeTex: "updated resume",
+            changes: [],
+            needsFullTranscript: false,
+            notes: [],
+          },
+        }),
+        compileResume: async ({ artifactDirectory, outputFileName }: { artifactDirectory: string; outputFileName?: string }) => {
+          compileInputs.push({ outputFileName });
+
+          return {
+            ok: true,
+            artifactDirectory,
+            command: "latexmk main.tex",
+            logPath: join(artifactDirectory, "compile.log"),
+            pdfPath: join(artifactDirectory, outputFileName ?? "main.pdf"),
+          };
+        },
+        reviewResume: async ({ pdfPath }: { pdfPath: string }) => {
+          reviewInputs.push(pdfPath);
+
+          return {
+            sessionID: "session-1",
+            rawResponseText: "{}",
+            response: {
+              passed: true,
+              summary: "Ready for approval.",
+              issues: [],
+              needsAnotherEditRound: false,
+            },
+          };
+        },
+      },
+    });
+
+    assert.equal(result.stage, "review-complete");
+    assert.equal(compileInputs[0]?.outputFileName, "Harsh_Kumar_Resume_Digitap.pdf");
+    assert.equal(reviewInputs[0], join(result.artifactDirectory, "Harsh_Kumar_Resume_Digitap.pdf"));
   });
 
   it("re-enters editing after PDF review feedback using the same retry budget", async () => {

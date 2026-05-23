@@ -27,6 +27,7 @@ export interface EditCompileLoopInput {
     compileResume?: (input: {
       resumePath: string;
       artifactDirectory: string;
+      outputFileName?: string;
       workingDirectory: string;
     }) => Promise<CompileResumeResult>;
     reviewResume?: (input: {
@@ -73,6 +74,7 @@ export async function runEditCompileLoop(input: EditCompileLoopInput): Promise<E
   const edit = input.dependencies?.editResume ?? editResume;
   const review = input.dependencies?.reviewResume ?? reviewResume;
   const originalResume = await readFile(resumePath, "utf8");
+  const outputFileName = createResumePdfFileName(input.jobPosting);
 
   await writeFile(join(artifactDirectory, "main.original.tex"), originalResume, "utf8");
 
@@ -107,6 +109,7 @@ export async function runEditCompileLoop(input: EditCompileLoopInput): Promise<E
       const compileResult = await compile({
         resumePath,
         artifactDirectory,
+        outputFileName,
         workingDirectory: input.opencode.client.directory,
       });
 
@@ -258,4 +261,58 @@ function formatReviewFeedback(result: ReviewResumeResult["response"]): string {
     issues,
     "Revise the resume TeX to address the review feedback.",
   ].join("\n\n");
+}
+
+function createResumePdfFileName(jobPosting: SourceDocument): string {
+  return `Harsh_Kumar_Resume_${deriveCompanySlug(jobPosting)}.pdf`;
+}
+
+function deriveCompanySlug(jobPosting: SourceDocument): string {
+  const companyName =
+    extractCompanyNameFromContent(jobPosting.content)
+    ?? extractCompanyNameFromUrl(jobPosting.source)
+    ?? "Company";
+
+  const normalized = companyName
+    .replace(/\.(ai|co|com|in|io|net|org)\b/gi, "")
+    .replace(/[^A-Za-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  return normalized || "Company";
+}
+
+function extractCompanyNameFromContent(content: string): string | undefined {
+  const patterns = [
+    /about\s+([^\n:*]+)/i,
+    /careers\s+at\s+([^\n:*]+)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = content.match(pattern)?.[1]?.trim();
+
+    if (match) {
+      return match;
+    }
+  }
+
+  return undefined;
+}
+
+function extractCompanyNameFromUrl(source: SourceDocument["source"]): string | undefined {
+  if (source.kind !== "url") {
+    return undefined;
+  }
+
+  try {
+    const hostname = new URL(source.location).hostname;
+    const firstLabel = hostname.split(".").find(Boolean);
+
+    if (!firstLabel) {
+      return undefined;
+    }
+
+    return firstLabel.charAt(0).toUpperCase() + firstLabel.slice(1);
+  } catch {
+    return undefined;
+  }
 }

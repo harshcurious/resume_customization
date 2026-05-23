@@ -1,4 +1,4 @@
-import { access, mkdir, writeFile } from "node:fs/promises";
+import { access, mkdir, rename, writeFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { spawn } from "node:child_process";
 
@@ -12,6 +12,7 @@ export interface CommandResult {
 export interface CompileResumeInput {
   resumePath: string;
   artifactDirectory: string;
+  outputFileName?: string;
   workingDirectory?: string;
   commandRunner?: (command: string, args: string[], cwd: string) => Promise<CommandResult>;
 }
@@ -51,10 +52,11 @@ export async function compileResume(input: CompileResumeInput): Promise<CompileR
   ];
   const command = formatCommand("latexmk", args);
   const logPath = join(input.artifactDirectory, "compile.log");
-  const pdfPath = join(
+  const generatedPdfPath = join(
     input.artifactDirectory,
     `${basename(input.resumePath, extname(input.resumePath))}.pdf`,
   );
+  const pdfPath = join(input.artifactDirectory, input.outputFileName ?? basename(generatedPdfPath));
 
   const result = await runCommand("latexmk", args, workingDirectory);
   await writeFile(logPath, formatCompileLog(command, result), "utf8");
@@ -82,7 +84,7 @@ export async function compileResume(input: CompileResumeInput): Promise<CompileR
   }
 
   try {
-    await access(pdfPath);
+    await access(generatedPdfPath);
   } catch {
     return {
       ok: false,
@@ -92,6 +94,10 @@ export async function compileResume(input: CompileResumeInput): Promise<CompileR
       summary: "latexmk reported success but the expected PDF artifact was not created.",
       exitCode: result.exitCode,
     };
+  }
+
+  if (pdfPath !== generatedPdfPath) {
+    await rename(generatedPdfPath, pdfPath);
   }
 
   return {
